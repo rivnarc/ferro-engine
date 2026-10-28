@@ -19,9 +19,9 @@ Ferro Engine currently supports 3 graphics APIs, with more coming soon. Here is 
 | API | Status | Platforms | Working versions |
 | :--- | :--- | :--- | :--- |
 | [Vulkan](https://vulkan.org/) | Developing ⏳ | [Windows](https://www.microsoft.com/en-us/windows/), [Linux](https://www.linux.org/), [Android](https://www.android.com/), [ChromeOS](https://chromeos.google/), [BSD Unix](https://en.wikipedia.org/wiki/Berkeley_Software_Distribution), [Fuchsia](https://fuchsia.dev/) | - |
-| [DirectX12](https://github.com/microsoft/DirectX-Graphics-Samples) | Unavailable ❌ | [Windows](https://www.microsoft.com/en-us/windows/), [WSL](https://wsl.dev/), [Windows Server](https://www.microsoft.com/en/windows-server) | - |
-| [Metal](https://developer.apple.com/metal/) | Unavailable ❌ | [macOS](https://www.apple.com/os/macos/), [iOS](https://www.apple.com/os/ios/), [iPadOS](https://www.apple.com/os/ipados/), [watchOS](https://www.apple.com/os/watchos/), [tvOS](https://developer.apple.com/tvos/), [visionOS](https://www.apple.com/os/visionos/) | - |
-| [WebGPU](https://webgpu.org/) | Unavailable ❌ | [Windows](https://www.microsoft.com/en-us/windows/), [macOS](https://www.apple.com/os/macos/), [Linux](https://www.linux.org/), [Android](https://www.android.com/), [iOS](https://www.apple.com/os/ios/), [Web](https://en.wikipedia.org/wiki/Web_browser) | - |
+| [DirectX12](https://github.com/microsoft/DirectX-Graphics-Samples) | ❌ | [Windows](https://www.microsoft.com/en-us/windows/), [WSL](https://wsl.dev/), [Windows Server](https://www.microsoft.com/en/windows-server) | - |
+| [Metal](https://developer.apple.com/metal/) | ❌ | [macOS](https://www.apple.com/os/macos/), [iOS](https://www.apple.com/os/ios/), [iPadOS](https://www.apple.com/os/ipados/), [watchOS](https://www.apple.com/os/watchos/), [tvOS](https://developer.apple.com/tvos/), [visionOS](https://www.apple.com/os/visionos/) | - |
+| [WebGPU](https://webgpu.org/) | ❌ | [Windows](https://www.microsoft.com/en-us/windows/), [macOS](https://www.apple.com/os/macos/), [Linux](https://www.linux.org/), [Android](https://www.android.com/), [iOS](https://www.apple.com/os/ios/), [Web](https://en.wikipedia.org/wiki/Web_browser) | - |
 </details>
 
 <details>
@@ -32,7 +32,7 @@ Ferro Engine currently supports 3 graphics APIs, with more coming soon. Here is 
 | [OpenGL](https://www.opengl.org/) | Stable ✅ | [Windows](https://www.microsoft.com/en-us/windows/), [Linux](https://www.linux.org/), [BSD Unix](https://en.wikipedia.org/wiki/Berkeley_Software_Distribution) | 3.3 - 4.6 |
 | [OpenGL ES](https://www.khronos.org/opengles/) | Unstable ⚠️ | [Android](https://www.android.com/), [iOS](https://www.apple.com/os/ios/), [iPadOS](https://www.apple.com/os/ipados/), [Linux](https://www.linux.org/) | 2.0 - 3.2 |
 | [WebGL](https://www.khronos.org/webgl/) | Unstable ⚠️ | [Windows](https://www.microsoft.com/en-us/windows/), [macOS](https://www.apple.com/os/macos/), [Linux](https://www.linux.org/), [Android](https://www.android.com/), [iOS](https://www.apple.com/os/ios/), [Web](https://en.wikipedia.org/wiki/Web_browser) | 1.0 - 2.0 |
-| [DirectX](https://github.com/microsoft/DirectX-Headers) | Unavailable ❌ | [Windows](https://www.microsoft.com/en-us/windows/) | - |
+| [DirectX](https://github.com/microsoft/DirectX-Headers) | ❌ | [Windows](https://www.microsoft.com/en-us/windows/) | - |
 </details>
 
 # Getting Started
