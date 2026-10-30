@@ -1,3 +1,4 @@
+use crate::editor::Editor;
 use crate::engine::{GraphicsContext, Input, Time, WindowState};
 use crate::graphics::Renderer2D;
 use crate::scene::{Node, Scene, Transform};
@@ -16,27 +17,33 @@ pub struct App {
     time: Time,
     input: Input,
     scene: Scene,
-    selected: usize,
+    editor: Editor,
 }
 
 impl Default for App {
     fn default() -> Self {
         let mut scene = Scene::default();
-        scene.nodes.push(Node {
+
+        let parent = scene.add_node(Node {
+            _name: "Parent".to_string(),
             transform: Transform {
                 position: Vec2::new(-0.5, 0.0),
                 ..Default::default()
             },
             ..Default::default()
         });
-        scene.nodes.push(Node {
+
+        let child = scene.add_node(Node {
+            _name: "Child".to_string(),
             transform: Transform {
-                position: Vec2::new(0.5, 0.0),
+                position: Vec2::new(0.6, 0.0),
                 scale: Vec2::splat(0.5),
                 ..Default::default()
             },
             ..Default::default()
         });
+
+        scene.attach(child, parent);
 
         Self {
             window: None,
@@ -45,7 +52,7 @@ impl Default for App {
             time: Time::new(),
             input: Input::default(),
             scene,
-            selected: 0,
+            editor: Editor::default(),
         }
     }
 }
@@ -74,21 +81,15 @@ impl ApplicationHandler for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         if let Some(code) = self.input.process_event(&event) {
-            match code {
-                KeyCode::Tab => {
-                    self.selected = (self.selected + 1) % self.scene.nodes.len();
-                }
-                KeyCode::KeyR => {
-                    self.scene.nodes[self.selected].transform = crate::scene::Transform::default();
-                }
-                KeyCode::Escape => event_loop.exit(),
-                _ => (),
+            if code == KeyCode::Escape {
+                event_loop.exit();
+                return;
             }
+            self.editor.on_key(code, &mut self.scene);
         }
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-
             WindowEvent::Resized(size) => {
                 if let Some(g) = &self.graphics {
                     g.resize(size.width, size.height);
@@ -97,54 +98,17 @@ impl ApplicationHandler for App {
                     }
                 }
             }
-
             WindowEvent::RedrawRequested => {
                 self.time.update();
-                let mult = self.input.speed_multiplier();
-                let move_speed = 1.5 * mult;
-                let rot_speed = 3.0 * mult;
-                let dt = self.time.delta;
 
-                let node = &mut self.scene.nodes[self.selected];
-                if self.input.is_pressed(KeyCode::ArrowLeft) {
-                    node.transform.position.x -= move_speed * dt;
-                }
-                if self.input.is_pressed(KeyCode::ArrowRight) {
-                    node.transform.position.x += move_speed * dt;
-                }
-                if self.input.is_pressed(KeyCode::ArrowUp) {
-                    node.transform.position.y += move_speed * dt;
-                }
-                if self.input.is_pressed(KeyCode::ArrowDown) {
-                    node.transform.position.y -= move_speed * dt;
-                }
-                if self.input.is_pressed(KeyCode::KeyQ) {
-                    node.transform.rotation += rot_speed * dt;
-                }
-                if self.input.is_pressed(KeyCode::KeyE) {
-                    node.transform.rotation -= rot_speed * dt;
-                }
-                let scale_speed = 1.0 * mult;
-                if self.input.is_pressed(KeyCode::Equal)
-                    || self.input.is_pressed(KeyCode::NumpadAdd)
-                {
-                    node.transform.scale += Vec2::splat(scale_speed * dt);
-                }
-                if self.input.is_pressed(KeyCode::Minus)
-                    || self.input.is_pressed(KeyCode::NumpadSubtract)
-                {
-                    let new_scale = (node.transform.scale - Vec2::splat(scale_speed * dt))
-                        .max(Vec2::splat(0.05));
-                    node.transform.scale = new_scale;
-                }
+                self.editor.update(&self.input, &self.time, &mut self.scene);
 
                 if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
                     unsafe {
                         g.gl.clear_color(0.1, 0.1, 0.15, 1.0);
                         g.gl.clear(glow::COLOR_BUFFER_BIT);
                     }
-                    let view_proj = Mat3::IDENTITY;
-                    r.render_scene(&g.gl, &self.scene, view_proj);
+                    r.render_scene(&g.gl, &self.scene, Mat3::IDENTITY);
                     g.swap_buffers();
                 }
 

@@ -103,8 +103,8 @@ impl Renderer2D {
         scene: &crate::scene::Scene,
         view_proj: glam::Mat3,
     ) {
-        for node in &scene.nodes {
-            let model = node.transform.to_matrix();
+        for i in 0..scene.nodes.len() {
+            let model = scene.world_matrix(i);
             self.render(gl, model, view_proj);
         }
     }
