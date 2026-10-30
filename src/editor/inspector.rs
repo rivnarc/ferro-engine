@@ -19,10 +19,13 @@ pub fn draw(ctx: &egui::Context, scene: &mut Scene, selected: usize) {
         });
 
         ui.label("Rotation");
-        ui.add(egui::Slider::new(
-            &mut node.transform.rotation,
-            -3.14..=3.14,
-        ));
+        let mut degrees = node.transform.rotation.to_degrees();
+        if ui
+            .add(egui::Slider::new(&mut degrees, -180.0..=180.0).suffix("°"))
+            .changed()
+        {
+            node.transform.rotation = degrees.to_radians();
+        }
 
         ui.label("Scale");
         ui.horizontal(|ui| {
