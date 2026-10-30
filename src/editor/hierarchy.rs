@@ -1,37 +1,42 @@
+use crate::editor::Editor;
 use crate::scene::{Node, Scene, Transform};
 use glam::Vec2;
 
-pub fn draw(ctx: &egui::Context, scene: &mut Scene, selected: usize) -> Option<usize> {
-    let mut new_selected = None;
-
+pub fn draw(ctx: &egui::Context, scene: &mut Scene, editor: &mut Editor) {
     egui::Window::new("Hierarchy").show(ctx, |ui| {
-        // Кнопка добавления узла
         if ui.button("+ Add Node").clicked() {
-            // Позиция — центр камеры (чтобы новый узел был виден)
             let pos = scene.camera.position;
             let idx = scene.add_node(Node {
-                name: format!("Node {}", scene.nodes.len()),
+                name: String::new(),
                 transform: Transform {
                     position: pos,
-                    scale: Vec2::splat(128.0), // дефолтный размер спрайта
+                    scale: Vec2::splat(256.0),
                     ..Default::default()
                 },
                 ..Default::default()
             });
-            new_selected = Some(idx);
+            editor.select_single(idx);
         }
 
         ui.separator();
 
-        // Список живых узлов
         for i in scene.alive_indices() {
             let node = &scene.nodes[i];
             let label = format!("{}: {}", i, node.name);
-            if ui.selectable_label(selected == i, label).clicked() {
-                new_selected = Some(i);
+            let selected = editor.is_selected(i);
+
+            // egui: клик с модификаторами
+            let response = ui.selectable_label(selected, label);
+            if response.clicked() {
+                let mods = ui.input(|i| i.modifiers);
+                if mods.ctrl || mods.command {
+                    editor.toggle(i);
+                } else if mods.shift {
+                    editor.add(i);
+                } else {
+                    editor.select_single(i);
+                }
             }
         }
     });
-
-    new_selected
 }

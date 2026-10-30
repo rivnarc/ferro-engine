@@ -27,20 +27,12 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let mut scene = Scene::default();
+
         scene.add_node(Node {
             name: "Node".to_string(),
             transform: Transform {
                 position: Vec2::new(0.0, 0.0),
                 scale: Vec2::splat(256.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-        scene.add_node(Node {
-            name: "Node1".to_string(),
-            transform: Transform {
-                position: Vec2::new(200.0, 100.0),
-                scale: Vec2::splat(128.0),
                 ..Default::default()
             },
             ..Default::default()
@@ -57,6 +49,81 @@ impl Default for App {
             editor: Editor::default(),
             fps: 0.0,
             last_print: Instant::now(),
+        }
+    }
+}
+
+impl App {
+    /// Размер окна в пикселях.
+    fn viewport_size(&self) -> Vec2 {
+        let s = self
+            .window
+            .as_ref()
+            .map(|w| w.window.inner_size())
+            .unwrap_or_default();
+        Vec2::new(s.width as f32, s.height as f32)
+    }
+
+    /// Текущая view_proj матрица камеры.
+    fn view_proj(&self) -> glam::Mat3 {
+        let size = self.viewport_size();
+        self.scene.camera.view_proj(size.x, size.y)
+    }
+
+    /// Обновление FPS (раз в кадр) + печать раз в секунду.
+    fn update_fps(&mut self) {
+        if self.time.delta > 0.0 {
+            let instant = 1.0 / self.time.delta;
+            self.fps = self.fps * 0.9 + instant * 0.1;
+        }
+        if self.last_print.elapsed().as_secs_f32() >= 1.0 {
+            println!("FPS: {:.1}", self.fps);
+            self.last_print = Instant::now();
+        }
+    }
+
+    /// Обработка клика мышью: хит-тест + модификаторы (Ctrl/Shift).
+    fn handle_click(&mut self) {
+        if !self.input.take_click() {
+            return;
+        }
+        let Some(win) = &self.window else {
+            return;
+        };
+        let size = win.window.inner_size();
+        let view_proj = self.view_proj();
+        let mouse = self.input.mouse_position();
+
+        let hits = crate::editor::viewport::hit_test_all(
+            &self.scene,
+            mouse,
+            Vec2::new(size.width as f32, size.height as f32),
+            view_proj,
+        );
+
+        let ctrl = self.input.ctrl;
+        let shift = self.input.shift;
+
+        if let Some(&top) = hits.first() {
+            if ctrl {
+                self.editor.toggle(top);
+            } else if shift {
+                self.editor.add(top);
+            } else {
+                self.editor.select_single(top);
+            }
+        } else if !ctrl && !shift {
+            self.editor.selected.clear();
+        }
+    }
+
+    fn render(&self, gl: &glow::Context, r: &Renderer2D) {
+        let view_proj = self.view_proj();
+        r.render_scene(gl, &self.scene, view_proj);
+        for &idx in &self.editor.selected {
+            if self.scene.nodes.get(idx).map(|n| n.alive).unwrap_or(false) {
+                r.draw_selection_outline(gl, &self.scene, idx, view_proj);
+            }
         }
     }
 }
@@ -86,6 +153,7 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        // 1. Сначала egui (кроме RedrawRequested)
         if !matches!(event, WindowEvent::RedrawRequested) {
             if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {
                 if gui.on_event(&win.window, &event) {
@@ -94,6 +162,7 @@ impl ApplicationHandler for App {
             }
         }
 
+        // 2. Ввод движка
         if let Some(code) = self.input.process_event(&event) {
             if code == KeyCode::Escape {
                 event_loop.exit();
@@ -102,6 +171,7 @@ impl ApplicationHandler for App {
             self.editor.on_key(code, &mut self.scene);
         }
 
+        // 3. События окна
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
 
@@ -116,17 +186,9 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 self.time.update();
+                self.update_fps();
 
-                if self.time.delta > 0.0 {
-                    let instant_fps = 1.0 / self.time.delta;
-                    self.fps = self.fps * 0.9 + instant_fps * 0.1;
-                }
-
-                if self.last_print.elapsed().as_secs_f32() >= 1.0 {
-                    println!("FPS: {:.1}", self.fps);
-                    self.last_print = Instant::now();
-                }
-
+                // Камера
                 let egui_wants_kb = self
                     .gui
                     .as_ref()
@@ -137,51 +199,36 @@ impl ApplicationHandler for App {
                     &self.input,
                     self.time.delta,
                 );
-
                 let scroll = self.input.take_scroll();
                 if scroll != 0.0 && !egui_wants_kb {
                     crate::editor::viewport::zoom_camera(&mut self.scene.camera, scroll);
                 }
 
+                // Редактор
                 self.editor.update(&self.input, &self.time, &mut self.scene);
+                self.handle_click();
 
-                if let Some(g) = &self.graphics {
+                // Очистка + сцена + обводки
+                if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
                     unsafe {
                         g.gl.clear_color(0.1, 0.1, 0.15, 1.0);
                         g.gl.clear(glow::COLOR_BUFFER_BIT);
                     }
+                    self.render(&g.gl, r);
                 }
 
-                if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
-                    let size = self
-                        .window
-                        .as_ref()
-                        .map(|w| w.window.inner_size())
-                        .unwrap_or_default();
-                    let view_proj = self
-                        .scene
-                        .camera
-                        .view_proj(size.width as f32, size.height as f32);
-                    r.render_scene(&g.gl, &self.scene, view_proj);
-                }
-
+                // GUI
                 if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {
                     let scene = &mut self.scene;
-                    let selected = &mut self.editor.selected;
-
+                    let editor = &mut self.editor;
                     gui.run_ui(&win.window, |ctx| {
-                        if let Some(new_selected) =
-                            crate::editor::hierarchy::draw(ctx, scene, *selected)
-                        {
-                            *selected = new_selected;
-                        }
-                        // Инспектор: редактирует выбранный узел
-                        crate::editor::inspector::draw(ctx, scene, *selected);
+                        crate::editor::hierarchy::draw(ctx, scene, editor);
+                        crate::editor::inspector::draw(ctx, scene, editor);
                     });
-
                     gui.paint(&win.window);
                 }
 
+                // Показ кадра
                 if let Some(g) = &self.graphics {
                     g.swap_buffers();
                 }

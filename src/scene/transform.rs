@@ -12,7 +12,7 @@ impl Default for Transform {
         Self {
             position: Vec2::ZERO,
             rotation: 0.0,
-            scale: Vec2::ONE,
+            scale: Vec2 { x: 256.0, y: 256.0 },
         }
     }
 }

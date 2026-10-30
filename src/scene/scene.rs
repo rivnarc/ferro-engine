@@ -10,6 +10,12 @@ pub struct Scene {
 impl Scene {
     pub fn add_node(&mut self, mut node: Node) -> usize {
         node.alive = true;
+        let base = if node.name.is_empty() {
+            "Node".to_string()
+        } else {
+            node.name.clone()
+        };
+        node.name = self.unique_name(&base);
         let idx = self.nodes.len();
         self.nodes.push(node);
         idx
@@ -30,7 +36,34 @@ impl Scene {
             .map(|(i, _)| i)
     }
 
+    pub fn rename_node(&mut self, idx: usize, new_name: &str) {
+        if idx >= self.nodes.len() || !self.nodes[idx].alive {
+            return;
+        }
+        let mut name = new_name.to_string();
+        let mut counter = 1;
+        while self
+            .nodes
+            .iter()
+            .enumerate()
+            .any(|(i, n)| i != idx && n.alive && n.name == name)
+        {
+            name = format!("{} ({})", new_name, counter);
+            counter += 1;
+        }
+        self.nodes[idx].name = name;
+    }
+
     pub fn world_matrix(&self, index: usize) -> Mat3 {
         self.nodes[index].transform.to_matrix()
+    }
+    fn unique_name(&self, base: &str) -> String {
+        let mut name = base.to_string();
+        let mut counter = 1;
+        while self.nodes.iter().any(|n| n.alive && n.name == name) {
+            name = format!("{} ({})", base, counter);
+            counter += 1;
+        }
+        name
     }
 }

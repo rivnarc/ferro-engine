@@ -1,3 +1,4 @@
+use glam::Vec2;
 use std::collections::HashSet;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -6,7 +7,10 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 pub struct Input {
     pressed: HashSet<KeyCode>,
     pub shift: bool,
+    pub ctrl: bool,
     scroll_delta: f32,
+    mouse_pos: Vec2,
+    mouse_clicked: bool,
 }
 
 impl Input {
@@ -20,6 +24,16 @@ impl Input {
         s
     }
 
+    pub fn mouse_position(&self) -> Vec2 {
+        self.mouse_pos
+    }
+
+    pub fn take_click(&mut self) -> bool {
+        let c = self.mouse_clicked;
+        self.mouse_clicked = false;
+        c
+    }
+
     pub fn process_event(&mut self, event: &WindowEvent) -> Option<KeyCode> {
         if let WindowEvent::MouseWheel { delta, .. } = event {
             match delta {
@@ -27,6 +41,19 @@ impl Input {
                 winit::event::MouseScrollDelta::PixelDelta(pos) => {
                     self.scroll_delta += pos.y as f32 / 50.0
                 }
+            }
+        }
+        if let WindowEvent::CursorMoved { position, .. } = event {
+            self.mouse_pos = Vec2::new(position.x as f32, position.y as f32);
+        }
+        if let WindowEvent::MouseInput {
+            state,
+            button: winit::event::MouseButton::Left,
+            ..
+        } = event
+        {
+            if *state == winit::event::ElementState::Pressed {
+                self.mouse_clicked = true;
             }
         }
         if let WindowEvent::KeyboardInput {
@@ -48,6 +75,9 @@ impl Input {
                     if *code == KeyCode::ShiftLeft || *code == KeyCode::ShiftRight {
                         self.shift = true;
                     }
+                    if *code == KeyCode::ControlLeft || *code == KeyCode::ControlRight {
+                        self.ctrl = true;
+                    }
                     if !repeat {
                         return Some(*code);
                     }
@@ -56,6 +86,9 @@ impl Input {
                     self.pressed.remove(code);
                     if *code == KeyCode::ShiftLeft || *code == KeyCode::ShiftRight {
                         self.shift = false;
+                    }
+                    if *code == KeyCode::ControlLeft || *code == KeyCode::ControlRight {
+                        self.ctrl = false;
                     }
                 }
             }
