@@ -4,6 +4,7 @@ use crate::graphics::Renderer2D;
 use crate::scene::{Node, Scene, Transform};
 use glam::Vec2;
 use glow::HasContext;
+use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
@@ -19,6 +20,8 @@ pub struct App {
     input: Input,
     scene: Scene,
     editor: Editor,
+    fps: f32,
+    last_print: Instant,
 }
 
 impl Default for App {
@@ -52,6 +55,8 @@ impl Default for App {
             input: Input::default(),
             scene,
             editor: Editor::default(),
+            fps: 0.0,
+            last_print: Instant::now(),
         }
     }
 }
@@ -111,6 +116,16 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 self.time.update();
+
+                if self.time.delta > 0.0 {
+                    let instant_fps = 1.0 / self.time.delta;
+                    self.fps = self.fps * 0.9 + instant_fps * 0.1;
+                }
+
+                if self.last_print.elapsed().as_secs_f32() >= 1.0 {
+                    println!("FPS: {:.1}", self.fps);
+                    self.last_print = Instant::now();
+                }
 
                 let egui_wants_kb = self
                     .gui

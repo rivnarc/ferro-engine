@@ -1,7 +1,9 @@
+use glow::HasContext;
 use glutin::config::Config;
 use glutin::context::{ContextAttributesBuilder, PossiblyCurrentContext};
 use glutin::display::{Display, GetGlDisplay};
 use glutin::prelude::*;
+use glutin::surface::SwapInterval;
 use glutin::surface::{Surface, SurfaceAttributesBuilder, WindowSurface};
 use raw_window_handle::HasWindowHandle;
 use std::num::NonZeroU32;
@@ -41,12 +43,23 @@ impl GraphicsContext {
 
         let context = not_current.make_current(&surface).unwrap();
 
+        surface
+            .set_swap_interval(&context, SwapInterval::DontWait)
+            .unwrap();
+
         let gl = std::sync::Arc::new(unsafe {
             glow::Context::from_loader_function(|s| {
                 let cs = std::ffi::CString::new(s).unwrap();
                 gl_display.get_proc_address(&cs) as *const _
             })
         });
+
+        unsafe {
+            let renderer = gl.get_parameter_string(glow::RENDERER);
+            let vendor = gl.get_parameter_string(glow::VENDOR);
+            println!("GPU Renderer: {}", renderer);
+            println!("GPU Vendor: {}", vendor);
+        }
 
         Self {
             gl,
