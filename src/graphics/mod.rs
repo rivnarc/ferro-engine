@@ -11,18 +11,18 @@ use texture::Texture;
 use vertex_array::VertexArray;
 
 const VERTEX_SRC: &str = r#"
-    #version 330 core
-    layout (location = 0) in vec2 aPos;
-    layout (location = 1) in vec2 aUV;
-    out vec2 UV;
-    uniform mat3 uModel;
-    uniform mat3 uViewProj;
-    void main() {
-        vec3 world = uModel * vec3(aPos, 1.0);
-        vec3 clip = uViewProj * world;
-        gl_Position = vec4(clip.xy, 0.0, 1.0);
-        UV = aUV;
-    }
+#version 330 core
+layout (location = 0) in vec2 aPos;
+layout (location = 1) in vec2 aUV;
+out vec2 UV;
+uniform mat3 uModel;
+uniform mat3 uViewProj;
+void main() {
+    vec3 world = uModel * vec3(aPos, 1.0);
+    vec3 clip = uViewProj * world;
+    gl_Position = vec4(clip.xy, 0.0, 1.0);
+    UV = aUV;
+}
 "#;
 
 const FRAGMENT_SRC: &str = r#"
@@ -83,7 +83,6 @@ impl Renderer2D {
         self.program.bind(gl);
         self.texture.bind(gl);
         self.vao.bind(gl);
-
         unsafe {
             gl.uniform_matrix_3_f32_slice(Some(&self.u_model_loc), false, &model.to_cols_array());
             gl.uniform_matrix_3_f32_slice(
@@ -91,7 +90,6 @@ impl Renderer2D {
                 false,
                 &view_proj.to_cols_array(),
             );
-
             gl.draw_arrays(glow::TRIANGLES, 0, 6);
         }
         VertexArray::unbind(gl);

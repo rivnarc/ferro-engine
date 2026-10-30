@@ -2,11 +2,12 @@ use crate::editor::{Editor, Gui};
 use crate::engine::{GraphicsContext, Input, Time, WindowState};
 use crate::graphics::Renderer2D;
 use crate::scene::{Node, Scene, Transform};
-use glam::{Mat3, Vec2};
+use glam::Vec2;
 use glow::HasContext;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
+use winit::keyboard::KeyCode;
 use winit::window::WindowId;
 
 pub struct App {
@@ -23,24 +24,24 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let mut scene = Scene::default();
-        let node = scene.add_node(Node {
+        scene.add_node(Node {
             name: "Node".to_string(),
             transform: Transform {
-                position: Vec2::new(-0.5, 0.0),
+                position: Vec2::new(0.0, 0.0),
+                scale: Vec2::splat(256.0),
                 ..Default::default()
             },
             ..Default::default()
         });
-        let node1 = scene.add_node(Node {
+        scene.add_node(Node {
             name: "Node1".to_string(),
             transform: Transform {
-                position: Vec2::new(0.6, 0.0),
-                scale: Vec2::splat(0.5),
+                position: Vec2::new(200.0, 100.0),
+                scale: Vec2::splat(128.0),
                 ..Default::default()
             },
             ..Default::default()
         });
-        scene.attach(node1, node);
 
         Self {
             window: None,
@@ -88,6 +89,14 @@ impl ApplicationHandler for App {
             }
         }
 
+        if let Some(code) = self.input.process_event(&event) {
+            if code == KeyCode::Escape {
+                event_loop.exit();
+                return;
+            }
+            self.editor.on_key(code, &mut self.scene);
+        }
+
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
 
@@ -102,6 +111,23 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 self.time.update();
+
+                let egui_wants_kb = self
+                    .gui
+                    .as_ref()
+                    .map(|g| g.wants_keyboard())
+                    .unwrap_or(false);
+                crate::editor::viewport::update_camera(
+                    &mut self.scene.camera,
+                    &self.input,
+                    self.time.delta,
+                );
+
+                let scroll = self.input.take_scroll();
+                if scroll != 0.0 && !egui_wants_kb {
+                    crate::editor::viewport::zoom_camera(&mut self.scene.camera, scroll);
+                }
+
                 self.editor.update(&self.input, &self.time, &mut self.scene);
 
                 if let Some(g) = &self.graphics {
@@ -112,7 +138,16 @@ impl ApplicationHandler for App {
                 }
 
                 if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
-                    r.render_scene(&g.gl, &self.scene, Mat3::IDENTITY);
+                    let size = self
+                        .window
+                        .as_ref()
+                        .map(|w| w.window.inner_size())
+                        .unwrap_or_default();
+                    let view_proj = self
+                        .scene
+                        .camera
+                        .view_proj(size.width as f32, size.height as f32);
+                    r.render_scene(&g.gl, &self.scene, view_proj);
                 }
 
                 if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {

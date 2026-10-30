@@ -14,6 +14,10 @@ impl Gui {
         Self { egui_glow }
     }
 
+    pub fn wants_keyboard(&self) -> bool {
+        self.egui_glow.egui_ctx.wants_keyboard_input()
+    }
+
     pub fn on_event(&mut self, window: &Window, event: &WindowEvent) -> bool {
         self.egui_glow.on_window_event(window, event).consumed
     }

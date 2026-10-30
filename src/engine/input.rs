@@ -4,16 +4,31 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Default)]
 pub struct Input {
-    _pressed: HashSet<KeyCode>,
-    pub _shift: bool,
+    pressed: HashSet<KeyCode>,
+    pub shift: bool,
+    scroll_delta: f32,
 }
 
 impl Input {
-    pub fn _is_pressed(&self, code: KeyCode) -> bool {
-        self._pressed.contains(&code)
+    pub fn is_pressed(&self, code: KeyCode) -> bool {
+        self.pressed.contains(&code)
     }
 
-    pub fn _process_event(&mut self, event: &WindowEvent) -> Option<KeyCode> {
+    pub fn take_scroll(&mut self) -> f32 {
+        let s = self.scroll_delta;
+        self.scroll_delta = 0.0;
+        s
+    }
+
+    pub fn process_event(&mut self, event: &WindowEvent) -> Option<KeyCode> {
+        if let WindowEvent::MouseWheel { delta, .. } = event {
+            match delta {
+                winit::event::MouseScrollDelta::LineDelta(_, y) => self.scroll_delta += y,
+                winit::event::MouseScrollDelta::PixelDelta(pos) => {
+                    self.scroll_delta += pos.y as f32 / 50.0
+                }
+            }
+        }
         if let WindowEvent::KeyboardInput {
             event:
                 KeyEvent {
@@ -28,19 +43,19 @@ impl Input {
             match state {
                 ElementState::Pressed => {
                     if !repeat {
-                        self._pressed.insert(*code);
+                        self.pressed.insert(*code);
                     }
                     if *code == KeyCode::ShiftLeft || *code == KeyCode::ShiftRight {
-                        self._shift = true;
+                        self.shift = true;
                     }
                     if !repeat {
                         return Some(*code);
                     }
                 }
                 ElementState::Released => {
-                    self._pressed.remove(code);
+                    self.pressed.remove(code);
                     if *code == KeyCode::ShiftLeft || *code == KeyCode::ShiftRight {
-                        self._shift = false;
+                        self.shift = false;
                     }
                 }
             }
@@ -48,7 +63,7 @@ impl Input {
         None
     }
 
-    pub fn _speed_multiplier(&self) -> f32 {
-        if self._shift { 2.0 } else { 1.0 }
+    pub fn speed_multiplier(&self) -> f32 {
+        if self.shift { 2.0 } else { 1.0 }
     }
 }
