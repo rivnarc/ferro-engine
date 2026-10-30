@@ -1,4 +1,4 @@
-use crate::editor::Editor;
+use crate::editor::{Editor, Gui};
 use crate::engine::{GraphicsContext, Input, Time, WindowState};
 use crate::graphics::Renderer2D;
 use crate::scene::{Node, Scene, Transform};
@@ -7,13 +7,13 @@ use glow::HasContext;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::KeyCode;
 use winit::window::WindowId;
 
 pub struct App {
-    window: Option<WindowState>,
-    graphics: Option<GraphicsContext>,
+    gui: Option<Gui>,
     renderer: Option<Renderer2D>,
+    graphics: Option<GraphicsContext>,
+    window: Option<WindowState>,
     time: Time,
     input: Input,
     scene: Scene,
@@ -23,18 +23,16 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let mut scene = Scene::default();
-
-        let parent = scene.add_node(Node {
-            _name: "Parent".to_string(),
+        let node = scene.add_node(Node {
+            name: "Node".to_string(),
             transform: Transform {
                 position: Vec2::new(-0.5, 0.0),
                 ..Default::default()
             },
             ..Default::default()
         });
-
-        let child = scene.add_node(Node {
-            _name: "Child".to_string(),
+        let node1 = scene.add_node(Node {
+            name: "Node1".to_string(),
             transform: Transform {
                 position: Vec2::new(0.6, 0.0),
                 scale: Vec2::splat(0.5),
@@ -42,13 +40,13 @@ impl Default for App {
             },
             ..Default::default()
         });
-
-        scene.attach(child, parent);
+        scene.attach(node1, node);
 
         Self {
             window: None,
             graphics: None,
             renderer: None,
+            gui: None,
             time: Time::new(),
             input: Input::default(),
             scene,
@@ -66,6 +64,7 @@ impl ApplicationHandler for App {
         let window_state = WindowState::new(event_loop, "Ferro Engine");
         let graphics = GraphicsContext::new(&window_state.window, window_state.gl_config.clone());
         let renderer = Renderer2D::new(&graphics.gl);
+        let gui = Gui::new(event_loop, &window_state.window, graphics.gl.clone());
 
         let size = window_state.window.inner_size();
         unsafe {
@@ -77,19 +76,21 @@ impl ApplicationHandler for App {
         self.window = Some(window_state);
         self.graphics = Some(graphics);
         self.renderer = Some(renderer);
+        self.gui = Some(gui);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        if let Some(code) = self.input.process_event(&event) {
-            if code == KeyCode::Escape {
-                event_loop.exit();
-                return;
+        if !matches!(event, WindowEvent::RedrawRequested) {
+            if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {
+                if gui.on_event(&win.window, &event) {
+                    return;
+                }
             }
-            self.editor.on_key(code, &mut self.scene);
         }
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+
             WindowEvent::Resized(size) => {
                 if let Some(g) = &self.graphics {
                     g.resize(size.width, size.height);
@@ -98,20 +99,41 @@ impl ApplicationHandler for App {
                     }
                 }
             }
+
             WindowEvent::RedrawRequested => {
                 self.time.update();
-
                 self.editor.update(&self.input, &self.time, &mut self.scene);
 
-                if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
+                if let Some(g) = &self.graphics {
                     unsafe {
                         g.gl.clear_color(0.1, 0.1, 0.15, 1.0);
                         g.gl.clear(glow::COLOR_BUFFER_BIT);
                     }
-                    r.render_scene(&g.gl, &self.scene, Mat3::IDENTITY);
-                    g.swap_buffers();
                 }
 
+                if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
+                    r.render_scene(&g.gl, &self.scene, Mat3::IDENTITY);
+                }
+
+                if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {
+                    let scene = &mut self.scene;
+                    let selected = &mut self.editor.selected;
+
+                    gui.run_ui(&win.window, |ctx| {
+                        if let Some(new_selected) =
+                            crate::editor::hierarchy::draw(ctx, scene, *selected)
+                        {
+                            *selected = new_selected;
+                        }
+                        crate::editor::inspector::draw(ctx, scene, *selected);
+                    });
+
+                    gui.paint(&win.window);
+                }
+
+                if let Some(g) = &self.graphics {
+                    g.swap_buffers();
+                }
                 if let Some(w) = &self.window {
                     w.window.request_redraw();
                 }

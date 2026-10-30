@@ -104,6 +104,9 @@ impl Renderer2D {
         view_proj: glam::Mat3,
     ) {
         for i in 0..scene.nodes.len() {
+            if !scene.nodes[i].alive {
+                continue;
+            }
             let model = scene.world_matrix(i);
             self.render(gl, model, view_proj);
         }

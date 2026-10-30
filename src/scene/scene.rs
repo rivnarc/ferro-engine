@@ -7,10 +7,38 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn add_node(&mut self, node: Node) -> usize {
+    pub fn add_node(&mut self, mut node: Node) -> usize {
+        node.alive = true;
         let idx = self.nodes.len();
         self.nodes.push(node);
         idx
+    }
+
+    pub fn remove_node(&mut self, idx: usize) {
+        if idx >= self.nodes.len() || !self.nodes[idx].alive {
+            return;
+        }
+
+        if let Some(parent) = self.nodes[idx].parent.take() {
+            if let Some(p) = self.nodes.get_mut(parent) {
+                p.children.retain(|&c| c != idx);
+            }
+        }
+
+        let children = std::mem::take(&mut self.nodes[idx].children);
+        for child in children {
+            self.nodes[child].parent = None;
+        }
+
+        self.nodes[idx].alive = false;
+    }
+
+    pub fn alive_indices(&self) -> impl Iterator<Item = usize> + '_ {
+        self.nodes
+            .iter()
+            .enumerate()
+            .filter(|(_, n)| n.alive)
+            .map(|(i, _)| i)
     }
 
     pub fn attach(&mut self, child: usize, parent: usize) {
@@ -38,7 +66,7 @@ impl Scene {
         }
     }
 
-    fn is_ancestor(&self, a: usize, b: usize) -> bool {
+    pub fn is_ancestor(&self, a: usize, b: usize) -> bool {
         let mut current = Some(b);
         while let Some(idx) = current {
             if idx == a {

@@ -8,7 +8,7 @@ use std::num::NonZeroU32;
 use winit::window::Window;
 
 pub struct GraphicsContext {
-    pub gl: glow::Context,
+    pub gl: std::sync::Arc<glow::Context>,
     pub surface: Surface<WindowSurface>,
     pub context: PossiblyCurrentContext,
     #[allow(dead_code)]
@@ -41,12 +41,12 @@ impl GraphicsContext {
 
         let context = not_current.make_current(&surface).unwrap();
 
-        let gl = unsafe {
+        let gl = std::sync::Arc::new(unsafe {
             glow::Context::from_loader_function(|s| {
                 let cs = std::ffi::CString::new(s).unwrap();
                 gl_display.get_proc_address(&cs) as *const _
             })
-        };
+        });
 
         Self {
             gl,

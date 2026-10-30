@@ -4,16 +4,16 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Default)]
 pub struct Input {
-    pressed: HashSet<KeyCode>,
-    pub shift: bool,
+    _pressed: HashSet<KeyCode>,
+    pub _shift: bool,
 }
 
 impl Input {
-    pub fn is_pressed(&self, code: KeyCode) -> bool {
-        self.pressed.contains(&code)
+    pub fn _is_pressed(&self, code: KeyCode) -> bool {
+        self._pressed.contains(&code)
     }
 
-    pub fn process_event(&mut self, event: &WindowEvent) -> Option<KeyCode> {
+    pub fn _process_event(&mut self, event: &WindowEvent) -> Option<KeyCode> {
         if let WindowEvent::KeyboardInput {
             event:
                 KeyEvent {
@@ -28,19 +28,19 @@ impl Input {
             match state {
                 ElementState::Pressed => {
                     if !repeat {
-                        self.pressed.insert(*code);
+                        self._pressed.insert(*code);
                     }
                     if *code == KeyCode::ShiftLeft || *code == KeyCode::ShiftRight {
-                        self.shift = true;
+                        self._shift = true;
                     }
                     if !repeat {
                         return Some(*code);
                     }
                 }
                 ElementState::Released => {
-                    self.pressed.remove(code);
+                    self._pressed.remove(code);
                     if *code == KeyCode::ShiftLeft || *code == KeyCode::ShiftRight {
-                        self.shift = false;
+                        self._shift = false;
                     }
                 }
             }
@@ -48,7 +48,7 @@ impl Input {
         None
     }
 
-    pub fn speed_multiplier(&self) -> f32 {
-        if self.shift { 2.0 } else { 1.0 }
+    pub fn _speed_multiplier(&self) -> f32 {
+        if self._shift { 2.0 } else { 1.0 }
     }
 }
