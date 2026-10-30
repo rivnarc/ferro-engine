@@ -175,6 +175,7 @@ impl ApplicationHandler for App {
                         {
                             *selected = new_selected;
                         }
+                        // Инспектор: редактирует выбранный узел
                         crate::editor::inspector::draw(ctx, scene, *selected);
                     });
 
