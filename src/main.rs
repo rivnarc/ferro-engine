@@ -58,7 +58,7 @@ impl ApplicationHandler for App {
                         g.gl.clear_color(0.1, 0.1, 0.15, 1.0);
                         g.gl.clear(glow::COLOR_BUFFER_BIT);
                     }
-                    r.render_triangle(&g.gl);
+                    r.render(&g.gl);
                     g.swap_buffers();
                 }
                 if let Some(w) = &self.window {
