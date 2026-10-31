@@ -8,6 +8,7 @@ pub struct Input {
     pressed: HashSet<KeyCode>,
     pub shift: bool,
     pub ctrl: bool,
+    pub mouse_down: bool,
     scroll_delta: f32,
     mouse_pos: Vec2,
     mouse_clicked: bool,
@@ -52,8 +53,14 @@ impl Input {
             ..
         } = event
         {
-            if *state == winit::event::ElementState::Pressed {
-                self.mouse_clicked = true;
+            match state {
+                winit::event::ElementState::Pressed => {
+                    self.mouse_down = true;
+                    self.mouse_clicked = true;
+                }
+                winit::event::ElementState::Released => {
+                    self.mouse_down = false;
+                }
             }
         }
         if let WindowEvent::KeyboardInput {

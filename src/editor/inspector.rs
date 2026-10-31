@@ -26,7 +26,6 @@ pub fn draw(ctx: &egui::Context, scene: &mut Scene, editor: &mut Editor) {
             return;
         }
 
-        // --- Name (только для одного) ---
         if count == 1 {
             let idx = selected[0];
             let mut name = scene.nodes[idx].name.clone();
@@ -38,7 +37,6 @@ pub fn draw(ctx: &egui::Context, scene: &mut Scene, editor: &mut Editor) {
 
         ui.separator();
 
-        // --- Position ---
         ui.label("Position");
         ui.horizontal(|ui| {
             edit_axis(
@@ -107,7 +105,6 @@ pub fn draw(ctx: &egui::Context, scene: &mut Scene, editor: &mut Editor) {
 
         ui.separator();
 
-        // --- Delete ---
         if ui.button("Delete Selected").clicked() {
             for &i in &selected {
                 scene.remove_node(i);

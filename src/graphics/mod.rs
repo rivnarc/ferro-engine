@@ -162,24 +162,19 @@ impl Renderer2D {
 
         let color = [1.0, 0.6, 0.0, 1.0];
 
-        // 4 полоски в локальных координатах узла
         let rects = [
-            // Верх: центр (0, -half - t/2), размер (1 + 2t, t)
             (
                 glam::Vec2::new(0.0, -half - thickness * 0.5),
                 glam::Vec2::new(1.0 + thickness * 2.0, thickness),
             ),
-            // Низ
             (
                 glam::Vec2::new(0.0, half + thickness * 0.5),
                 glam::Vec2::new(1.0 + thickness * 2.0, thickness),
             ),
-            // Лево
             (
                 glam::Vec2::new(-half - thickness * 0.5, 0.0),
                 glam::Vec2::new(thickness, 1.0),
             ),
-            // Право
             (
                 glam::Vec2::new(half + thickness * 0.5, 0.0),
                 glam::Vec2::new(thickness, 1.0),
@@ -187,12 +182,21 @@ impl Renderer2D {
         ];
 
         for (local_pos, local_size) in rects {
-            // Локальная матрица полоски: T(local_pos) * S(local_size)
             let local =
                 glam::Mat3::from_translation(local_pos) * glam::Mat3::from_scale(local_size);
-            // Применяем мировую матрицу узла: world * local
             let model = world * local;
             self.render(gl, model, view_proj, color, false);
         }
+    }
+    pub fn draw_world_rect(
+        &self,
+        gl: &glow::Context,
+        pos: glam::Vec2,
+        size: glam::Vec2,
+        view_proj: glam::Mat3,
+        color: [f32; 4],
+    ) {
+        let model = glam::Mat3::from_translation(pos) * glam::Mat3::from_scale(size);
+        self.render(gl, model, view_proj, color, false);
     }
 }

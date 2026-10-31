@@ -25,7 +25,6 @@ pub fn draw(ctx: &egui::Context, scene: &mut Scene, editor: &mut Editor) {
             let label = format!("{}: {}", i, node.name);
             let selected = editor.is_selected(i);
 
-            // egui: клик с модификаторами
             let response = ui.selectable_label(selected, label);
             if response.clicked() {
                 let mods = ui.input(|i| i.modifiers);

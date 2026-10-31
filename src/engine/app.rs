@@ -54,7 +54,6 @@ impl Default for App {
 }
 
 impl App {
-    /// Размер окна в пикселях.
     fn viewport_size(&self) -> Vec2 {
         let s = self
             .window
@@ -64,13 +63,11 @@ impl App {
         Vec2::new(s.width as f32, s.height as f32)
     }
 
-    /// Текущая view_proj матрица камеры.
     fn view_proj(&self) -> glam::Mat3 {
         let size = self.viewport_size();
         self.scene.camera.view_proj(size.x, size.y)
     }
 
-    /// Обновление FPS (раз в кадр) + печать раз в секунду.
     fn update_fps(&mut self) {
         if self.time.delta > 0.0 {
             let instant = 1.0 / self.time.delta;
@@ -82,7 +79,6 @@ impl App {
         }
     }
 
-    /// Обработка клика мышью: хит-тест + модификаторы (Ctrl/Shift).
     fn handle_click(&mut self) {
         if !self.input.take_click() {
             return;
@@ -91,16 +87,26 @@ impl App {
             return;
         };
         let size = win.window.inner_size();
+        let vp_size = Vec2::new(size.width as f32, size.height as f32);
         let view_proj = self.view_proj();
-        let mouse = self.input.mouse_position();
+        let mouse_screen = self.input.mouse_position();
+        let mouse_world =
+            crate::editor::viewport::screen_to_world(mouse_screen, vp_size, view_proj);
 
-        let hits = crate::editor::viewport::hit_test_all(
-            &self.scene,
-            mouse,
-            Vec2::new(size.width as f32, size.height as f32),
-            view_proj,
-        );
+        if let Some(axis) =
+            crate::editor::gizmo::hit_test_gizmo(&self.scene, &self.editor.selected, mouse_world)
+        {
+            self.editor.drag = Some(crate::editor::gizmo::GizmoDrag::new(
+                axis,
+                mouse_world,
+                &self.scene,
+                &self.editor.selected,
+            ));
+            return;
+        }
 
+        let hits =
+            crate::editor::viewport::hit_test_all(&self.scene, mouse_screen, vp_size, view_proj);
         let ctrl = self.input.ctrl;
         let shift = self.input.shift;
 
@@ -117,13 +123,45 @@ impl App {
         }
     }
 
+    fn update_drag(&mut self) {
+        let Some(drag) = &self.editor.drag else {
+            return;
+        };
+        if !self.input.mouse_down {
+            self.editor.drag = None;
+            return;
+        }
+        let Some(win) = &self.window else {
+            return;
+        };
+        let size = win.window.inner_size();
+        let vp_size = Vec2::new(size.width as f32, size.height as f32);
+        let view_proj = self.view_proj();
+        let mouse_screen = self.input.mouse_position();
+        let mouse_world =
+            crate::editor::viewport::screen_to_world(mouse_screen, vp_size, view_proj);
+        drag.update(&mut self.scene, mouse_world);
+    }
+
     fn render(&self, gl: &glow::Context, r: &Renderer2D) {
         let view_proj = self.view_proj();
+
         r.render_scene(gl, &self.scene, view_proj);
+
         for &idx in &self.editor.selected {
             if self.scene.nodes.get(idx).map(|n| n.alive).unwrap_or(false) {
                 r.draw_selection_outline(gl, &self.scene, idx, view_proj);
             }
+        }
+
+        if !self.editor.selected.is_empty() {
+            crate::editor::gizmo::draw_gizmo(
+                &self.scene,
+                &self.editor.selected,
+                |pos, size, color| {
+                    r.draw_world_rect(gl, pos, size, view_proj, color);
+                },
+            );
         }
     }
 }
@@ -153,7 +191,6 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        // 1. Сначала egui (кроме RedrawRequested)
         if !matches!(event, WindowEvent::RedrawRequested) {
             if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {
                 if gui.on_event(&win.window, &event) {
@@ -162,7 +199,6 @@ impl ApplicationHandler for App {
             }
         }
 
-        // 2. Ввод движка
         if let Some(code) = self.input.process_event(&event) {
             if code == KeyCode::Escape {
                 event_loop.exit();
@@ -171,7 +207,6 @@ impl ApplicationHandler for App {
             self.editor.on_key(code, &mut self.scene);
         }
 
-        // 3. События окна
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
 
@@ -188,7 +223,6 @@ impl ApplicationHandler for App {
                 self.time.update();
                 self.update_fps();
 
-                // Камера
                 let egui_wants_kb = self
                     .gui
                     .as_ref()
@@ -204,11 +238,10 @@ impl ApplicationHandler for App {
                     crate::editor::viewport::zoom_camera(&mut self.scene.camera, scroll);
                 }
 
-                // Редактор
                 self.editor.update(&self.input, &self.time, &mut self.scene);
                 self.handle_click();
+                self.update_drag();
 
-                // Очистка + сцена + обводки
                 if let (Some(g), Some(r)) = (&self.graphics, &self.renderer) {
                     unsafe {
                         g.gl.clear_color(0.1, 0.1, 0.15, 1.0);
@@ -217,7 +250,6 @@ impl ApplicationHandler for App {
                     self.render(&g.gl, r);
                 }
 
-                // GUI
                 if let (Some(gui), Some(win)) = (&mut self.gui, &self.window) {
                     let scene = &mut self.scene;
                     let editor = &mut self.editor;
@@ -228,7 +260,6 @@ impl ApplicationHandler for App {
                     gui.paint(&win.window);
                 }
 
-                // Показ кадра
                 if let Some(g) = &self.graphics {
                     g.swap_buffers();
                 }

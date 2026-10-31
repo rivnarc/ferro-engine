@@ -59,3 +59,11 @@ pub fn hit_test_all(
     }
     hits
 }
+
+pub fn screen_to_world(screen_pos: Vec2, viewport_size: Vec2, view_proj: Mat3) -> Vec2 {
+    let ndc = Vec2::new(
+        (screen_pos.x / viewport_size.x) * 2.0 - 1.0,
+        1.0 - (screen_pos.y / viewport_size.y) * 2.0,
+    );
+    view_proj.inverse().transform_point2(ndc)
+}

@@ -1,3 +1,4 @@
+pub mod gizmo;
 pub mod gui;
 pub mod hierarchy;
 pub mod inspector;
@@ -5,18 +6,21 @@ pub mod viewport;
 
 pub use gui::Gui;
 
+use crate::editor::gizmo::GizmoDrag;
 use crate::engine::{Input, Time};
 use crate::scene::{Scene, Transform};
 use winit::keyboard::KeyCode;
 
 pub struct Editor {
     pub selected: Vec<usize>,
+    pub drag: Option<GizmoDrag>,
 }
 
 impl Default for Editor {
     fn default() -> Self {
         Self {
             selected: Vec::new(),
+            drag: None,
         }
     }
 }
@@ -45,7 +49,6 @@ impl Editor {
         self.selected.contains(&idx)
     }
 
-    /// Первый выбранный узел (для инспектора). Возвращает None, если ничего не выбрано.
     pub fn primary(&self) -> Option<usize> {
         self.selected.first().copied()
     }
