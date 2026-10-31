@@ -4,7 +4,6 @@ use crate::graphics::Renderer2D;
 use crate::scene::{Node, Scene, Transform};
 use glam::Vec2;
 use glow::HasContext;
-use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
@@ -20,8 +19,6 @@ pub struct App {
     input: Input,
     scene: Scene,
     editor: Editor,
-    fps: f32,
-    last_print: Instant,
 }
 
 impl Default for App {
@@ -47,8 +44,6 @@ impl Default for App {
             input: Input::default(),
             scene,
             editor: Editor::default(),
-            fps: 0.0,
-            last_print: Instant::now(),
         }
     }
 }
@@ -66,17 +61,6 @@ impl App {
     fn view_proj(&self) -> glam::Mat3 {
         let size = self.viewport_size();
         self.scene.camera.view_proj(size.x, size.y)
-    }
-
-    fn update_fps(&mut self) {
-        if self.time.delta > 0.0 {
-            let instant = 1.0 / self.time.delta;
-            self.fps = self.fps * 0.9 + instant * 0.1;
-        }
-        if self.last_print.elapsed().as_secs_f32() >= 1.0 {
-            println!("FPS: {:.1}", self.fps);
-            self.last_print = Instant::now();
-        }
     }
 
     fn handle_click(&mut self) {
@@ -221,7 +205,6 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 self.time.update();
-                self.update_fps();
 
                 let egui_wants_kb = self
                     .gui
@@ -256,6 +239,7 @@ impl ApplicationHandler for App {
                     gui.run_ui(&win.window, |ctx| {
                         crate::editor::hierarchy::draw(ctx, scene, editor);
                         crate::editor::inspector::draw(ctx, scene, editor);
+                        crate::editor::savenload::draw(ctx, scene);
                     });
                     gui.paint(&win.window);
                 }

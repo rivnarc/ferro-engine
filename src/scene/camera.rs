@@ -1,6 +1,7 @@
 use glam::{Mat3, Vec2};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Camera2D {
     pub position: Vec2,
     pub zoom: f32,

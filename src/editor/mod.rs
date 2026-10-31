@@ -2,6 +2,7 @@ pub mod gizmo;
 pub mod gui;
 pub mod hierarchy;
 pub mod inspector;
+pub mod savenload;
 pub mod viewport;
 
 pub use gui::Gui;

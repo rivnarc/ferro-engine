@@ -1,4 +1,3 @@
-use glow::HasContext;
 use glutin::config::Config;
 use glutin::context::{ContextAttributesBuilder, PossiblyCurrentContext};
 use glutin::display::{Display, GetGlDisplay};
@@ -53,13 +52,6 @@ impl GraphicsContext {
                 gl_display.get_proc_address(&cs) as *const _
             })
         });
-
-        unsafe {
-            let renderer = gl.get_parameter_string(glow::RENDERER);
-            let vendor = gl.get_parameter_string(glow::VENDOR);
-            println!("GPU Renderer: {}", renderer);
-            println!("GPU Vendor: {}", vendor);
-        }
 
         Self {
             gl,

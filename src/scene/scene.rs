@@ -1,7 +1,8 @@
 use crate::scene::{Camera2D, Node};
 use glam::Mat3;
+use serde::{Deserialize, Serialize};
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Scene {
     pub nodes: Vec<Node>,
     pub camera: Camera2D,
