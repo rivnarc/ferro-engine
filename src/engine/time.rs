@@ -15,7 +15,8 @@ impl Time {
 
     pub fn update(&mut self) {
         let now = Instant::now();
-        self.delta = (now - self.last_frame).as_secs_f32();
+        let raw_delta = (now - self.last_frame).as_secs_f32();
+        self.delta = raw_delta.min(0.1);
         self.last_frame = now;
     }
 }

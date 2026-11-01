@@ -13,6 +13,7 @@ pub fn draw(ctx: &egui::Context, scene: &mut Scene, editor: &mut Editor) {
                     scale: Vec2::splat(256.0),
                     ..Default::default()
                 },
+                script: None,
                 ..Default::default()
             });
             editor.select_single(idx);

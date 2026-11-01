@@ -1,3 +1,4 @@
+pub mod debug;
 pub mod gizmo;
 pub mod gui;
 pub mod hierarchy;

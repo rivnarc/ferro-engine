@@ -2,6 +2,7 @@ mod editor;
 mod engine;
 mod graphics;
 mod math;
+mod physics;
 mod scene;
 
 use winit::event_loop::{ControlFlow, EventLoop};

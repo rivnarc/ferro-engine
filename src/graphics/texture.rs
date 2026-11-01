@@ -6,8 +6,22 @@ pub struct Texture {
 
 impl Texture {
     pub fn from_image(gl: &glow::Context, path: &str) -> Self {
-        let img = image::open(path).expect("Не удалось загрузить текстуру");
-        let img = img.flipv().to_rgba8();
+        Self::from_image_checked(gl, path)
+            .expect(&format!("Не удалось загрузить текстуру: {}", path))
+    }
+
+    pub fn bind(&self, gl: &glow::Context) {
+        unsafe {
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.id));
+        }
+    }
+
+    pub fn from_image_checked(gl: &glow::Context, path: &str) -> Option<Self> {
+        if !std::path::Path::new(path).exists() {
+            return None;
+        }
+
+        let img = image::open(path).ok()?.to_rgba8();
         let (width, height) = img.dimensions();
 
         unsafe {
@@ -48,13 +62,7 @@ impl Texture {
             );
 
             gl.bind_texture(glow::TEXTURE_2D, None);
-            Self { id }
-        }
-    }
-
-    pub fn bind(&self, gl: &glow::Context) {
-        unsafe {
-            gl.bind_texture(glow::TEXTURE_2D, Some(self.id));
+            Some(Self { id })
         }
     }
 }

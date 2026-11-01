@@ -4,9 +4,10 @@ pub mod texture;
 pub mod vertex_array;
 
 use buffer::VertexBuffer;
-use glam::Mat3;
+use glam::{Mat3, Vec2};
 use glow::HasContext;
 use shader::ShaderProgram;
+use std::collections::HashMap;
 use texture::Texture;
 use vertex_array::VertexArray;
 
@@ -45,7 +46,7 @@ pub struct Renderer2D {
     program: ShaderProgram,
     vao: VertexArray,
     _vbo: VertexBuffer,
-    texture: Texture,
+    textures: HashMap<String, Texture>,
     u_model_loc: glow::UniformLocation,
     u_viewproj_loc: glow::UniformLocation,
     u_color_loc: glow::UniformLocation,
@@ -65,8 +66,21 @@ impl Renderer2D {
         let vao = VertexArray::new(gl);
         vao.set_attrib_f32(gl, &vbo, 0, 2, 16, 0);
         vao.set_attrib_f32(gl, &vbo, 1, 2, 16, 8);
-
-        let texture = Texture::from_image(gl, "assets/textures/prototype_texture.png");
+        let mut textures = HashMap::new();
+        if let Ok(entries) = std::fs::read_dir("assets/textures") {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.ends_with(".png") {
+                        let path = format!("assets/textures/{}", name);
+                        if let Some(tex) = Texture::from_image_checked(gl, &path) {
+                            textures.insert(name.to_string(), tex);
+                        }
+                    }
+                }
+            }
+        }
+        let default = Texture::from_image(gl, "assets/textures/prototype_texture.png");
+        textures.insert("__default__".to_string(), default);
 
         let (u_model_loc, u_viewproj_loc) = unsafe {
             (
@@ -90,7 +104,7 @@ impl Renderer2D {
             program,
             vao,
             _vbo: vbo,
-            texture,
+            textures,
             u_model_loc,
             u_viewproj_loc,
             u_color_loc,
@@ -105,9 +119,10 @@ impl Renderer2D {
         view_proj: Mat3,
         color: [f32; 4],
         use_texture: bool,
+        texture: &Texture,
     ) {
         self.program.bind(gl);
-        self.texture.bind(gl);
+        texture.bind(gl);
         self.vao.bind(gl);
         unsafe {
             gl.uniform_matrix_3_f32_slice(Some(&self.u_model_loc), false, &model.to_cols_array());
@@ -138,12 +153,16 @@ impl Renderer2D {
         scene: &crate::scene::Scene,
         view_proj: glam::Mat3,
     ) {
+        let default = self.textures.get("__default__").expect("default texture");
+
         for i in 0..scene.nodes.len() {
             if !scene.nodes[i].alive {
                 continue;
             }
             let model = scene.world_matrix(i);
-            self.render(gl, model, view_proj, [1.0, 1.0, 1.0, 1.0], true);
+            let tex_name = scene.nodes[i].texture.as_deref().unwrap_or("__default__");
+            let tex = self.textures.get(tex_name).unwrap_or(default);
+            self.render(gl, model, view_proj, [1.0, 1.0, 1.0, 1.0], true, tex);
         }
     }
 
@@ -185,7 +204,8 @@ impl Renderer2D {
             let local =
                 glam::Mat3::from_translation(local_pos) * glam::Mat3::from_scale(local_size);
             let model = world * local;
-            self.render(gl, model, view_proj, color, false);
+            let default = self.textures.get("__default__").expect("default");
+            self.render(gl, model, view_proj, color, false, default);
         }
     }
     pub fn draw_world_rect(
@@ -197,6 +217,47 @@ impl Renderer2D {
         color: [f32; 4],
     ) {
         let model = glam::Mat3::from_translation(pos) * glam::Mat3::from_scale(size);
-        self.render(gl, model, view_proj, color, false);
+        let default = self.textures.get("__default__").expect("default texture");
+        self.render(gl, model, view_proj, color, false, default);
+    }
+    pub fn draw_collider(
+        &self,
+        gl: &glow::Context,
+        scene: &crate::scene::Scene,
+        index: usize,
+        view_proj: glam::Mat3,
+    ) {
+        let Some(aabb) = crate::physics::collision::node_aabb(scene, index) else {
+            return;
+        };
+
+        let color = [0.0, 1.0, 0.0, 1.0];
+        let thickness = 2.0;
+
+        let center = aabb.center;
+        let half = aabb.half_size;
+
+        let rects = [
+            (
+                center + Vec2::new(0.0, -half.y),
+                Vec2::new(half.x * 2.0 + thickness, thickness),
+            ),
+            (
+                center + Vec2::new(0.0, half.y),
+                Vec2::new(half.x * 2.0 + thickness, thickness),
+            ),
+            (
+                center + Vec2::new(-half.x, 0.0),
+                Vec2::new(thickness, half.y * 2.0),
+            ),
+            (
+                center + Vec2::new(half.x, 0.0),
+                Vec2::new(thickness, half.y * 2.0),
+            ),
+        ];
+
+        for (pos, size) in rects {
+            self.draw_world_rect(gl, pos, size, view_proj, color);
+        }
     }
 }

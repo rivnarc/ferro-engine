@@ -1,0 +1,48 @@
+(
+    nodes: [
+        (
+            name: "Node",
+            transform: (
+                position: (687.4968, -282.42157),
+                rotation: 184.92873,
+                scale: (256.0, 256.0),
+            ),
+            alive: true,
+            script: Some("spin.rhai"),
+        ),
+        (
+            name: "Node (1)",
+            transform: (
+                position: (0.0, -36.663177),
+                rotation: 0.9599311,
+                scale: (725.0, 355.0),
+            ),
+            alive: true,
+            script: None,
+        ),
+        (
+            name: "Node (2)",
+            transform: (
+                position: (338.3431, -285.73016),
+                rotation: 365.05392,
+                scale: (562.0, 1275.0),
+            ),
+            alive: true,
+            script: Some("lol.rhai"),
+        ),
+        (
+            name: "Node (3)",
+            transform: (
+                position: (515.9265, -303.7393),
+                rotation: 148.5958,
+                scale: (256.0, 256.0),
+            ),
+            alive: true,
+            script: Some("spin.rhai"),
+        ),
+    ],
+    camera: (
+        position: (156.64767, -135.41022),
+        zoom: 0.5131579,
+    ),
+)
