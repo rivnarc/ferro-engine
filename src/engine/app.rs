@@ -1,3 +1,4 @@
+use crate::engine::FpsCounter;
 use crate::engine::{EditorState, RenderState};
 use glow::HasContext;
 use winit::application::ApplicationHandler;
@@ -9,22 +10,19 @@ use winit::window::WindowId;
 pub struct App {
     render: RenderState,
     editor: EditorState,
-    fps: crate::engine::FpsCounter,
+    fps: FpsCounter,
     show_colliders: bool,
+    is_editor: bool,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            render: RenderState {
-                window: None,
-                graphics: None,
-                renderer: None,
-                gui: None,
-            },
+            render: RenderState::empty(),
             editor: EditorState::default(),
-            fps: crate::engine::FpsCounter::default(),
+            fps: FpsCounter::default(),
             show_colliders: true,
+            is_editor: true,
         }
     }
 }
@@ -35,6 +33,7 @@ impl App {
         self.editor.scene.camera.view_proj(size.x, size.y)
     }
 
+    #[cfg(feature = "editor")]
     fn handle_click(&mut self) {
         if !self.editor.input.take_click() {
             return;
@@ -80,6 +79,7 @@ impl App {
         }
     }
 
+    #[cfg(feature = "editor")]
     fn update_drag(&mut self) {
         let Some(drag) = &self.editor.editor.drag else {
             return;
@@ -95,6 +95,35 @@ impl App {
         drag.update(&mut self.editor.scene, mouse_world);
     }
 
+    #[cfg(feature = "editor")]
+    pub fn new_editor() -> Self {
+        Self {
+            render: RenderState::empty(),
+            editor: EditorState::default(),
+            fps: FpsCounter::default(),
+            show_colliders: false,
+            is_editor: true,
+        }
+    }
+
+    pub fn new_game(scene_path: String) -> Self {
+        let scene = std::fs::read_to_string(&scene_path)
+            .ok()
+            .and_then(|s| ron::from_str::<crate::scene::Scene>(&s).ok())
+            .unwrap_or_default();
+
+        let mut editor_state = EditorState::default();
+        editor_state.scene = scene;
+
+        Self {
+            render: RenderState::empty(),
+            editor: editor_state,
+            fps: FpsCounter::default(),
+            show_colliders: false,
+            is_editor: false,
+        }
+    }
+
     fn render(&self) {
         let (Some(g), Some(r)) = (&self.render.graphics, &self.render.renderer) else {
             return;
@@ -108,6 +137,7 @@ impl App {
 
         r.render_scene(&g.gl, &self.editor.scene, view_proj);
 
+        #[cfg(feature = "editor")]
         for &idx in &self.editor.editor.selected {
             if self
                 .editor
@@ -127,6 +157,7 @@ impl App {
             }
         }
 
+        #[cfg(feature = "editor")]
         if !self.editor.editor.selected.is_empty() {
             crate::editor::gizmo::draw_gizmo(
                 &self.editor.scene,
@@ -142,14 +173,17 @@ impl ApplicationHandler for App {
         if self.render.window.is_some() {
             return;
         }
-        self.render = RenderState::new(event_loop, "Ferro Engine");
+        self.render = RenderState::new(event_loop, "Ferro Engine", self.is_editor);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        if !matches!(event, WindowEvent::RedrawRequested) {
-            if let (Some(gui), Some(win)) = (&mut self.render.gui, &self.render.window) {
-                if gui.on_event(&win.window, &event) {
-                    return;
+        #[cfg(feature = "editor")]
+        if self.is_editor {
+            if !matches!(event, WindowEvent::RedrawRequested) {
+                if let (Some(gui), Some(win)) = (&mut self.render.gui, &self.render.window) {
+                    if gui.on_event(&win.window, &event) {
+                        return;
+                    }
                 }
             }
         }
@@ -159,7 +193,10 @@ impl ApplicationHandler for App {
                 event_loop.exit();
                 return;
             }
-            self.editor.editor.on_key(code, &mut self.editor.scene);
+            #[cfg(feature = "editor")]
+            if self.is_editor {
+                self.editor.editor.on_key(code, &mut self.editor.scene);
+            }
         }
 
         match event {
@@ -172,49 +209,86 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => {
                 self.editor.time.update();
                 self.fps.update();
-                let egui_wants_kb = self.render.wants_keyboard();
-                crate::editor::viewport::update_camera(
-                    &mut self.editor.scene.camera,
-                    &self.editor.input,
-                    self.editor.time.delta,
-                );
-                let scroll = self.editor.input.take_scroll();
-                if scroll != 0.0 && !egui_wants_kb {
-                    crate::editor::viewport::zoom_camera(&mut self.editor.scene.camera, scroll);
+
+                #[cfg(feature = "editor")]
+                if self.is_editor {
+                    let egui_wants_kb = self.render.wants_keyboard();
+                    crate::editor::viewport::update_camera(
+                        &mut self.editor.scene.camera,
+                        &self.editor.input,
+                        self.editor.time.delta,
+                    );
+                    let scroll = self.editor.input.take_scroll();
+                    if scroll != 0.0 && !egui_wants_kb {
+                        crate::editor::viewport::zoom_camera(&mut self.editor.scene.camera, scroll);
+                    }
                 }
 
-                self.editor.editor.update(
-                    &self.editor.input,
-                    &self.editor.time,
-                    &mut self.editor.scene,
-                );
-                self.handle_click();
-                self.update_drag();
+                #[cfg(feature = "editor")]
+                if self.is_editor {
+                    self.editor.editor.update(
+                        &self.editor.input,
+                        &self.editor.time,
+                        &mut self.editor.scene,
+                    );
+                    self.handle_click();
+                    self.update_drag();
+                }
 
                 self.editor.script_engine.update(
                     &mut self.editor.scene,
                     &self.editor.input,
                     self.editor.time.delta,
+                    self.fps.fps,
                 );
 
-                crate::physics::integrate(&mut self.editor.scene, self.editor.time.delta);
+                #[cfg(feature = "editor")]
+                if let Some(rx) = &self.editor.editor.export_rx {
+                    match rx.try_recv() {
+                        Ok(Ok(path)) => {
+                            self.editor.editor.export_status =
+                                crate::editor::export::ExportStatus::Done(path);
+                            self.editor.editor.export_rx = None;
+                        }
+                        Ok(Err(e)) => {
+                            self.editor.editor.export_status =
+                                crate::editor::export::ExportStatus::Error(e);
+                            self.editor.editor.export_rx = None;
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => {}
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            self.editor.editor.export_status =
+                                crate::editor::export::ExportStatus::Error(
+                                    "Поток завершился".to_string(),
+                                );
+                            self.editor.editor.export_rx = None;
+                        }
+                    }
+                }
 
-                crate::physics::resolve_collisions(&mut self.editor.scene);
+                crate::physics::integrate_and_resolve(
+                    &mut self.editor.scene,
+                    self.editor.time.delta,
+                );
 
                 self.render();
 
-                if let (Some(gui), Some(win)) = (&mut self.render.gui, &self.render.window) {
-                    let scene = &mut self.editor.scene;
-                    let editor = &mut self.editor.editor;
-                    let mut show_colliders = self.show_colliders;
-                    gui.run_ui(&win.window, |ctx| {
-                        crate::editor::hierarchy::draw(ctx, scene, editor);
-                        crate::editor::inspector::draw(ctx, scene, editor);
-                        crate::editor::savenload::draw(ctx, scene);
-                        crate::editor::debug::draw(ctx, self.fps.fps, &mut show_colliders);
-                    });
-                    self.show_colliders = show_colliders;
-                    gui.paint(&win.window);
+                #[cfg(feature = "editor")]
+                if self.is_editor {
+                    if let (Some(gui), Some(win)) = (&mut self.render.gui, &self.render.window) {
+                        let scene = &mut self.editor.scene;
+                        let editor = &mut self.editor.editor;
+                        let mut show_colliders = self.show_colliders;
+                        let fps_value = self.fps.fps;
+                        gui.run_ui(&win.window, |ctx| {
+                            crate::editor::hierarchy::draw(ctx, scene, editor);
+                            crate::editor::inspector::draw(ctx, scene, editor);
+                            crate::editor::savenload::draw(ctx, scene, editor);
+                            crate::editor::debug::draw(ctx, fps_value, &mut show_colliders);
+                        });
+                        self.show_colliders = show_colliders;
+                        gui.paint(&win.window);
+                    }
                 }
 
                 self.render.swap_buffers();

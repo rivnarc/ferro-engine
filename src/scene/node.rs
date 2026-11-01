@@ -9,7 +9,7 @@ pub struct PhysicsBody {
     pub grounded: bool,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     pub name: String,
     pub transform: Transform,
@@ -19,5 +19,7 @@ pub struct Node {
     pub physics: Option<PhysicsBody>,
     #[serde(skip)]
     pub script_initialized: bool,
+    #[serde(skip)]
+    pub previous_position: Vec2,
     pub alive: bool,
 }

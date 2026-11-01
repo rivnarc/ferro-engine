@@ -1,4 +1,6 @@
+#[cfg(feature = "editor")]
 use crate::editor::Gui;
+
 use crate::engine::{GraphicsContext, WindowState};
 use crate::graphics::Renderer2D;
 use glam::Vec2;
@@ -6,6 +8,7 @@ use glow::HasContext;
 use winit::event_loop::ActiveEventLoop;
 
 pub struct RenderState {
+    #[cfg(feature = "editor")]
     pub gui: Option<Gui>,
     pub renderer: Option<Renderer2D>,
     pub graphics: Option<GraphicsContext>,
@@ -13,11 +16,31 @@ pub struct RenderState {
 }
 
 impl RenderState {
-    pub fn new(event_loop: &ActiveEventLoop, title: &str) -> Self {
+    pub fn empty() -> Self {
+        Self {
+            window: None,
+            graphics: None,
+            renderer: None,
+            #[cfg(feature = "editor")]
+            gui: None,
+        }
+    }
+
+    pub fn new(event_loop: &ActiveEventLoop, title: &str, is_editor: bool) -> Self {
         let window_state = WindowState::new(event_loop, title);
         let graphics = GraphicsContext::new(&window_state.window, window_state.gl_config.clone());
         let renderer = Renderer2D::new(&graphics.gl);
-        let gui = Gui::new(event_loop, &window_state.window, graphics.gl.clone());
+
+        #[cfg(feature = "editor")]
+        let gui = if is_editor {
+            Some(Gui::new(
+                event_loop,
+                &window_state.window,
+                graphics.gl.clone(),
+            ))
+        } else {
+            None
+        };
 
         let size = window_state.window.inner_size();
         unsafe {
@@ -30,7 +53,8 @@ impl RenderState {
             window: Some(window_state),
             graphics: Some(graphics),
             renderer: Some(renderer),
-            gui: Some(gui),
+            #[cfg(feature = "editor")]
+            gui,
         }
     }
 
@@ -52,6 +76,7 @@ impl RenderState {
         }
     }
 
+    #[cfg(feature = "editor")]
     pub fn wants_keyboard(&self) -> bool {
         self.gui
             .as_ref()

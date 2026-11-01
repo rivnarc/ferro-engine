@@ -1,4 +1,5 @@
 pub mod debug;
+pub mod export;
 pub mod gizmo;
 pub mod gui;
 pub mod hierarchy;
@@ -11,11 +12,14 @@ pub use gui::Gui;
 use crate::editor::gizmo::GizmoDrag;
 use crate::engine::{Input, Time};
 use crate::scene::{Scene, Transform};
+use std::sync::mpsc::Receiver;
 use winit::keyboard::KeyCode;
 
 pub struct Editor {
     pub selected: Vec<usize>,
     pub drag: Option<GizmoDrag>,
+    pub export_status: crate::editor::export::ExportStatus,
+    pub export_rx: Option<Receiver<Result<std::path::PathBuf, String>>>,
 }
 
 impl Default for Editor {
@@ -23,6 +27,8 @@ impl Default for Editor {
         Self {
             selected: Vec::new(),
             drag: None,
+            export_status: crate::editor::export::ExportStatus::Idle,
+            export_rx: None,
         }
     }
 }

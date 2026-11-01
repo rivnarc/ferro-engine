@@ -12,6 +12,7 @@ pub struct ScriptEngine {
     _watcher: RecommendedWatcher,
     events: Receiver<notify::Result<Event>>,
     total_time: f64,
+    last_logs: HashMap<String, f64>,
 }
 
 impl ScriptEngine {
@@ -54,6 +55,7 @@ impl ScriptEngine {
             _watcher: watcher,
             events: rx,
             total_time: 0.0,
+            last_logs: HashMap::new(),
         }
     }
 
@@ -110,7 +112,7 @@ impl ScriptEngine {
         Some(ast)
     }
 
-    pub fn update(&mut self, scene: &mut Scene, input: &crate::engine::Input, dt: f32) {
+    pub fn update(&mut self, scene: &mut Scene, input: &crate::engine::Input, dt: f32, fps: f32) {
         self.drain_events(scene);
         self.total_time += dt as f64;
 
@@ -132,6 +134,8 @@ impl ScriptEngine {
             };
 
             let mut scope = Scope::new();
+            let last_log = *self.last_logs.get(&script_name).unwrap_or(&0.0);
+            scope.push("last_log", last_log);
             scope.push("current_rotation", node.transform.rotation as f64);
             scope.push("pos_x", node.transform.position.x as f64);
             scope.push("pos_y", node.transform.position.y as f64);
@@ -147,7 +151,7 @@ impl ScriptEngine {
             scope.push("down", input.is_pressed(KeyCode::ArrowDown));
             scope.push("left", input.is_pressed(KeyCode::ArrowLeft));
             scope.push("right", input.is_pressed(KeyCode::ArrowRight));
-
+            scope.push("fps", fps as f64);
             scope.push("colliding", !collision_map[i].is_empty());
             scope.push("collision_count", collision_map[i].len() as i64);
 
@@ -203,6 +207,9 @@ impl ScriptEngine {
                 if let Some(v) = scope.get_value::<f64>("vel_y") {
                     body.velocity.y = v as f32;
                 }
+            }
+            if let Some(v) = scope.get_value::<f64>("last_log") {
+                self.last_logs.insert(script_name.clone(), v);
             }
         }
     }
