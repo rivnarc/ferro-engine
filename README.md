@@ -2,7 +2,7 @@
 ![Rust Version](https://img.shields.io/badge/rust-2021-orange.svg)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
-Ferro Engine is a 2D game engine that combines performance, good physics, and a user-friendly editor.
+Ferro Engine is a 2D and 3D game engine that combines performance, good physics, and a user-friendly editor.
 
 ## Features
 - **Fast 2D Rendering:** Built on top of OpenGL (`glow`).
